@@ -3,15 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <title>Meeting Execution Evaluator</title>
+
   <style>
     :root {
-      --bg: #0f172a;
-      --card: #111827;
+      --bg: #020617;
+      --panel: #0f172a;
+      --card: #020617;
+      --border: #1f2937;
       --accent: #38bdf8;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
       --success: #22c55e;
       --warn: #f59e0b;
+      --danger: #ef4444;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
     }
 
     * { box-sizing: border-box; }
@@ -19,13 +23,13 @@
     body {
       margin: 0;
       font-family: Inter, system-ui, sans-serif;
-      background: linear-gradient(120deg, #020617, #0f172a);
+      background: linear-gradient(135deg, #020617, #0f172a);
       color: var(--text);
     }
 
     header {
       padding: 24px;
-      border-bottom: 1px solid #1f2933;
+      border-bottom: 1px solid var(--border);
     }
 
     header h1 {
@@ -34,9 +38,9 @@
     }
 
     header p {
-      margin: 6px 0 0;
-      color: var(--muted);
+      margin-top: 6px;
       font-size: 14px;
+      color: var(--muted);
     }
 
     .container {
@@ -46,11 +50,11 @@
     }
 
     .card {
-      background: var(--card);
-      border-radius: 12px;
+      background: var(--panel);
+      border-radius: 14px;
       padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 0 0 1px #1f2933;
+      margin-bottom: 22px;
+      box-shadow: inset 0 0 0 1px var(--border);
     }
 
     .card h2 {
@@ -61,12 +65,13 @@
     textarea {
       width: 100%;
       min-height: 160px;
-      background: #020617;
-      border: 1px solid #1f2933;
+      background: var(--card);
+      border: 1px solid var(--border);
       color: var(--text);
       padding: 12px;
-      border-radius: 8px;
+      border-radius: 10px;
       resize: vertical;
+      margin-top: 10px;
     }
 
     input[type="file"] {
@@ -75,14 +80,14 @@
     }
 
     button {
+      margin-top: 14px;
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: none;
       background: var(--accent);
       color: #020617;
-      border: none;
-      padding: 12px 18px;
-      border-radius: 8px;
       font-weight: 600;
       cursor: pointer;
-      margin-top: 12px;
     }
 
     button:disabled {
@@ -93,18 +98,18 @@
     .progress {
       display: flex;
       gap: 10px;
-      margin-top: 10px;
+      margin-top: 16px;
     }
 
     .step {
       flex: 1;
       padding: 10px;
-      text-align: center;
-      border-radius: 6px;
       font-size: 13px;
-      background: #020617;
-      border: 1px dashed #1f2933;
+      text-align: center;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
       color: var(--muted);
+      background: var(--card);
     }
 
     .step.active {
@@ -113,27 +118,28 @@
     }
 
     .step.done {
-      background: rgba(34,197,94,0.15);
       border-color: var(--success);
+      background: rgba(34,197,94,0.15);
       color: var(--success);
     }
 
     .result {
-      border-left: 4px solid var(--accent);
-      padding: 14px;
+      background: var(--card);
+      border-radius: 12px;
+      padding: 16px;
       margin-top: 14px;
-      background: #020617;
-      border-radius: 8px;
+      border-left: 4px solid var(--accent);
     }
 
     .tag {
       display: inline-block;
-      padding: 4px 8px;
-      font-size: 12px;
+      padding: 4px 10px;
       border-radius: 999px;
+      font-size: 12px;
       margin-right: 6px;
-      background: #1f2933;
+      background: #020617;
       color: var(--muted);
+      border: 1px solid var(--border);
     }
 
     .owner {
@@ -150,29 +156,43 @@
 
     .actions-bar {
       display: flex;
-      gap: 12px;
-      margin-top: 16px;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
     }
 
     .ghost {
       background: transparent;
       color: var(--accent);
       border: 1px solid var(--accent);
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
+    .feedback-bar button {
+      font-size: 13px;
+      padding: 8px 12px;
+    }
+
+    .status {
+      font-size: 13px;
+      margin-top: 6px;
     }
   </style>
 </head>
+
 <body>
 
 <header>
   <h1>Meeting Execution Evaluator</h1>
-  <p>Extract decisions and enforceable actions. No summaries. Only work.</p>
+  <p>Extract decisions and enforceable action items. No summaries. Only execution.</p>
 </header>
 
 <div class="container">
 
   <!-- INPUT -->
   <div class="card">
-    <h2>1. Input meeting data</h2>
+    <h2>1. Add meeting inputs</h2>
 
     <textarea id="transcript" placeholder="Paste meeting transcript here..."></textarea>
 
@@ -197,8 +217,8 @@
 </div>
 
 <script>
-  const btn = document.getElementById("analyzeBtn");
   const transcriptEl = document.getElementById("transcript");
+  const analyzeBtn = document.getElementById("analyzeBtn");
   const resultsEl = document.getElementById("results");
 
   const steps = [
@@ -208,47 +228,36 @@
     document.getElementById("step4")
   ];
 
-  function setStep(index, state) {
+  const feedbackStore = [];
+
+  function updateStep(index, state) {
     steps[index].classList.remove("active", "done");
     steps[index].classList.add(state);
   }
 
   function simulateProgress() {
-    setStep(0, "active");
-    setTimeout(() => {
-      setStep(0, "done");
-      setStep(1, "active");
-    }, 600);
-
-    setTimeout(() => {
-      setStep(1, "done");
-      setStep(2, "active");
-    }, 1200);
-
-    setTimeout(() => {
-      setStep(2, "done");
-      setStep(3, "active");
-    }, 1800);
-
-    setTimeout(() => {
-      setStep(3, "done");
-    }, 2400);
+    updateStep(0, "active");
+    setTimeout(() => { updateStep(0, "done"); updateStep(1, "active"); }, 500);
+    setTimeout(() => { updateStep(1, "done"); updateStep(2, "active"); }, 1100);
+    setTimeout(() => { updateStep(2, "done"); updateStep(3, "active"); }, 1700);
+    setTimeout(() => { updateStep(3, "done"); }, 2300);
   }
 
-  // Very simple rule-based extractor to demonstrate structure
+  // Rule-based extractor (LLM-ready replacement point)
   function extractActions(text) {
-    const sentences = text.split(".").map(s => s.trim()).filter(Boolean);
+    const sentences = text
+      .split(/[\.\n]/)
+      .map(s => s.trim())
+      .filter(Boolean);
 
     const actions = [];
 
     sentences.forEach(s => {
-      if (
-        /will|need to|should|action item|let's|assign/i.test(s)
-      ) {
+      if (/will|need to|should|action item|let's|assign/i.test(s)) {
         actions.push({
           action: s,
           owner: /amir/i.test(s) ? "Amir" : "needs_clarification",
-          confidence: /amir/i.test(s) ? "0.9" : "0.4",
+          confidence: /amir/i.test(s) ? 0.9 : 0.4,
           quote: s
         });
       }
@@ -257,24 +266,29 @@
     return actions;
   }
 
-  btn.onclick = () => {
+  analyzeBtn.onclick = () => {
     resultsEl.innerHTML = "";
+    feedbackStore.length = 0;
     steps.forEach(s => s.classList.remove("active", "done"));
 
-    const text = transcriptEl.value.trim();
-    if (!text) return alert("Please add a transcript.");
+    const transcript = transcriptEl.value.trim();
+    if (!transcript) {
+      alert("Please add a transcript.");
+      return;
+    }
 
     simulateProgress();
 
     setTimeout(() => {
-      const actions = extractActions(text);
+      const actions = extractActions(transcript);
 
-      if (actions.length === 0) {
-        resultsEl.innerHTML = "<p style='color:var(--muted)'>No enforceable actions detected.</p>";
+      if (!actions.length) {
+        resultsEl.innerHTML =
+          "<p style='color:var(--muted)'>No enforceable actions detected.</p>";
         return;
       }
 
-      actions.forEach(a => {
+      actions.forEach((a, index) => {
         const div = document.createElement("div");
         div.className = "result";
 
@@ -286,11 +300,25 @@
 
           <p><strong>${a.action}</strong></p>
 
-          <p>Owner:
-            <span class="owner">${a.owner}</span>
-          </p>
+          <p>Owner: <span class="owner">${a.owner}</span></p>
 
           <div class="quote">"${a.quote}"</div>
+
+          <hr style="border-color:var(--border);margin:14px 0">
+
+          <p style="color:var(--muted);margin-bottom:6px">Your feedback</p>
+
+          <div class="actions-bar feedback-bar">
+            <button class="ghost" data-v="approved">✅ Approve</button>
+            <button class="ghost" data-v="edit">✏️ Edit</button>
+            <button class="ghost" data-v="clarify">❓ Needs clarification</button>
+            <button class="ghost" data-v="rejected">❌ Incorrect</button>
+          </div>
+
+          <textarea placeholder="Optional comment (correction, missing context, ownership, etc.)"
+            style="margin-top:10px;min-height:70px"></textarea>
+
+          <div class="status"></div>
 
           <div class="actions-bar">
             <button class="ghost">Send to Google Tasks</button>
@@ -299,10 +327,35 @@
           </div>
         `;
 
+        const buttons = div.querySelectorAll("button[data-v]");
+        const textarea = div.querySelector("textarea");
+        const status = div.querySelector(".status");
+
+        buttons.forEach(btn => {
+          btn.onclick = () => {
+            feedbackStore[index] = {
+              verdict: btn.dataset.v,
+              comment: textarea.value,
+              action: a.action,
+              owner: a.owner,
+              confidence: a.confidence,
+              quote: a.quote,
+              reviewer: "Amir",
+              timestamp: new Date().toISOString()
+            };
+
+            status.textContent = `Feedback captured: ${btn.dataset.v}`;
+            status.style.color = "var(--success)";
+
+            buttons.forEach(b => b.disabled = true);
+            textarea.disabled = true;
+          };
+        });
+
         resultsEl.appendChild(div);
       });
 
-    }, 2600);
+    }, 2400);
   };
 </script>
 
