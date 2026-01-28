@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Meeting Execution Evaluator</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --accent: #38bdf8;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --success: #22c55e;
+      --warn: #f59e0b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: linear-gradient(120deg, #020617, #0f172a);
+      color: var(--text);
+    }
+
+    header {
+      padding: 24px;
+      border-bottom: 1px solid #1f2933;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 0 1px #1f2933;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      background: #020617;
+      border: 1px solid #1f2933;
+      color: var(--text);
+      padding: 12px;
+      border-radius: 8px;
+      resize: vertical;
+    }
+
+    input[type="file"] {
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    button {
+      background: var(--accent);
+      color: #020617;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .progress {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .step {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      border-radius: 6px;
+      font-size: 13px;
+      background: #020617;
+      border: 1px dashed #1f2933;
+      color: var(--muted);
+    }
+
+    .step.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .step.done {
+      background: rgba(34,197,94,0.15);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .result {
+      border-left: 4px solid var(--accent);
+      padding: 14px;
+      margin-top: 14px;
+      background: #020617;
+      border-radius: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 999px;
+      margin-right: 6px;
+      background: #1f2933;
+      color: var(--muted);
+    }
+
+    .owner {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .quote {
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .actions-bar {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .ghost {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Meeting Execution Evaluator</h1>
+  <p>Extract decisions and enforceable actions. No summaries. Only work.</p>
+</header>
+
+<div class="container">
+
+  <!-- INPUT -->
+  <div class="card">
+    <h2>1. Input meeting data</h2>
+
+    <textarea id="transcript" placeholder="Paste meeting transcript here..."></textarea>
+
+    <input type="file" multiple accept=".pdf,.doc,.docx" />
+
+    <button id="analyzeBtn">Analyze for Actions</button>
+
+    <div class="progress">
+      <div class="step" id="step1">Ingest</div>
+      <div class="step" id="step2">Parse</div>
+      <div class="step" id="step3">Evaluate</div>
+      <div class="step" id="step4">Ready</div>
+    </div>
+  </div>
+
+  <!-- OUTPUT -->
+  <div class="card">
+    <h2>2. Decisions & Action Items</h2>
+    <div id="results"></div>
+  </div>
+
+</div>
+
+<script>
+  const btn = document.getElementById("analyzeBtn");
+  const transcriptEl = document.getElementById("transcript");
+  const resultsEl = document.getElementById("results");
+
+  const steps = [
+    document.getElementById("step1"),
+    document.getElementById("step2"),
+    document.getElementById("step3"),
+    document.getElementById("step4")
+  ];
+
+  function setStep(index, state) {
+    steps[index].classList.remove("active", "done");
+    steps[index].classList.add(state);
+  }
+
+  function simulateProgress() {
+    setStep(0, "active");
+    setTimeout(() => {
+      setStep(0, "done");
+      setStep(1, "active");
+    }, 600);
+
+    setTimeout(() => {
+      setStep(1, "done");
+      setStep(2, "active");
+    }, 1200);
+
+    setTimeout(() => {
+      setStep(2, "done");
+      setStep(3, "active");
+    }, 1800);
+
+    setTimeout(() => {
+      setStep(3, "done");
+    }, 2400);
+  }
+
+  // Very simple rule-based extractor to demonstrate structure
+  function extractActions(text) {
+    const sentences = text.split(".").map(s => s.trim()).filter(Boolean);
+
+    const actions = [];
+
+    sentences.forEach(s => {
+      if (
+        /will|need to|should|action item|let's|assign/i.test(s)
+      ) {
+        actions.push({
+          action: s,
+          owner: /amir/i.test(s) ? "Amir" : "needs_clarification",
+          confidence: /amir/i.test(s) ? "0.9" : "0.4",
+          quote: s
+        });
+      }
+    });
+
+    return actions;
+  }
+
+  btn.onclick = () => {
+    resultsEl.innerHTML = "";
+    steps.forEach(s => s.classList.remove("active", "done"));
+
+    const text = transcriptEl.value.trim();
+    if (!text) return alert("Please add a transcript.");
+
+    simulateProgress();
+
+    setTimeout(() => {
+      const actions = extractActions(text);
+
+      if (actions.length === 0) {
+        resultsEl.innerHTML = "<p style='color:var(--muted)'>No enforceable actions detected.</p>";
+        return;
+      }
+
+      actions.forEach(a => {
+        const div = document.createElement("div");
+        div.className = "result";
+
+        div.innerHTML = `
+          <div>
+            <span class="tag">ACTION</span>
+            <span class="tag">Confidence: ${a.confidence}</span>
+          </div>
+
+          <p><strong>${a.action}</strong></p>
+
+          <p>Owner:
+            <span class="owner">${a.owner}</span>
+          </p>
+
+          <div class="quote">"${a.quote}"</div>
+
+          <div class="actions-bar">
+            <button class="ghost">Send to Google Tasks</button>
+            <button class="ghost">Send to Notion</button>
+            <button class="ghost">Create Jira Ticket</button>
+          </div>
+        `;
+
+        resultsEl.appendChild(div);
+      });
+
+    }, 2600);
+  };
+</script>
+
+</body>
+</html>
